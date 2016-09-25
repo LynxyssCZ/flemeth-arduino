@@ -9,10 +9,6 @@
 #define SERIAL_BAUD  115200
 #define DRF_BAUD 9600
 
-#define FLEM_REMOTE "@CRP"
-#define FLEM_LOCAL "@CLP"
-#define FLEM_END "/\n"
-
 #define DRF_EN A5
 #define DRF_SIZE 6
 #define RELAY 12
@@ -37,6 +33,9 @@ bool readDSFlag = FALSE;
 bool remoteReceiving = FALSE;
 char remoteCommand;
 int payloadSize;
+float remoteTarget;
+float remoteCurrent;
+float remoteHyst;
 
 // State magic
 bool switchState = FALSE;
@@ -62,6 +61,7 @@ void setup() {
 
 	lcd.begin(16, 2);
 	lcd.noBlink();
+
 	Serial.begin(SERIAL_BAUD);
 	Serial1.begin(DRF_BAUD);
 	dallas.begin();
@@ -102,28 +102,40 @@ void processDRFPacket() {
 
 	while (Serial1.available() >= DRF_SIZE) {
 		Serial1.readBytes(data, DRF_SIZE);
-
-		Serial.write(FLEM_REMOTE);
-		Serial.print(String(DRF_SIZE));
-		Serial.write(data, 6);
-		Serial.write(FLEM_END);
+		sendRemote('R', data, DRF_SIZE);
 	}
 }
 
 void reportDallasTemp() {
 	byte data[2];
-
 	dallas.getRaw(data);
 
-	Serial.write(FLEM_LOCAL);
-	Serial.print("2");
-	Serial.write(data, 2);
-	Serial.write(FLEM_END);
+	sendRemote('L', data, 2);
+}
+
+void sendRemote() {
+	Serial.println("*");
+}
+
+void sendRemote(char command, byte payload[], int size) {
+	Serial.print("@C");
+	Serial.write(command);
+	Serial.write('P');
+
+	if (size < 16) {
+		Serial.print("0");
+	}
+
+	Serial.print(size, HEX);
+	Serial.write(payload, size);
+	Serial.println("/");
 }
 
 void processRemote() {
 	byte remotePayload[10];
 	bool commandReceived = FALSE;
+	byte payloadHi;
+	byte payloadLow;
 
 	if (Serial.peek() == '*') {
 		while (Serial.available()) {
@@ -133,7 +145,7 @@ void processRemote() {
 		return;
 	}
 
-	if (!remoteReceiving && Serial.available() >= 5) {
+	if (!remoteReceiving && Serial.available() >= 6) {
 		// Wait for fixed size preable @C_PL
 		if (Serial.read() != '@') {
 			return;
@@ -145,7 +157,9 @@ void processRemote() {
 
 		remoteCommand = Serial.read();
 		Serial.read(); // Payload
-		payloadSize = Serial.read() - 48;
+		payloadHi = Serial.read();
+		payloadLow = Serial.read();
+		payloadSize = hex2int(payloadHi) << 4 | hex2int(payloadLow);
 		remoteReceiving = TRUE;
 	}
 	else if (remoteReceiving && Serial.available() >= (payloadSize + 2)) {
@@ -159,12 +173,39 @@ void processRemote() {
 	if (commandReceived) {
 		switch (remoteCommand) {
 			case 'S':
-				// Switch command @CSP1I/
+				// Switch command @CSP01I/
 				switchState = remotePayload[0] == 'I';
+				break;
+			case 'T':
+				// Set target
+				remoteTarget = (remotePayload[0] << 4 | remotePayload[1]) / 16.0;
+				break;
+			case 'C':
+				// Set current
+				remoteCurrent = (remotePayload[0] << 4 | remotePayload[1]) / 16.0;
+				break;
+			case 'H':
+				// Set current
+				remoteHyst = (remotePayload[0] << 4 | remotePayload[1]) / 16.0;
 				break;
 		}
 
 		resetRemoteState();
+		sendRemote();
+	}
+}
+
+int hex2int(char hex) {
+	if (isAlphaNumeric(hex)) {
+		if (hex < 58) {
+			return hex - 48;
+		}
+		else {
+			return hex - 55;
+		}
+	}
+	else {
+		return 0;
 	}
 }
 
@@ -182,24 +223,34 @@ void updateLCD() {
 	lcd.home();
 
 	if (remotePresent) {
-		lcd.print(pingCycle);
+		lcd.print("C:");
+		printFloat(remoteCurrent, 1);
+
+		lcd.setCursor(0, 1);
+		lcd.print("T:");
+		printFloat(remoteTarget, 1);
+		lcd.print(" H:");
+		printFloat(remoteHyst, 1);
 	}
 	else {
 		lcd.print("Waiting...");
 		lcd.setCursor(0, 1);
 
 		lcd.print("Temp: ");
-
-		if (celsius) {
-			lcd.print(celsius, 2);
-		}
-		else {
-			lcd.print("##.##");
-		}
+		printFloat(celsius, 2);
 	}
 
 	lcd.setCursor(15, 0);
 	lcd.print(switchState ? "1" : "0");
+}
+
+void printFloat (float value, int precission) {
+	if (value) {
+		lcd.print(value, precission);
+	}
+	else {
+		lcd.print("##.#");
+	}
 }
 
 // Check flags here
