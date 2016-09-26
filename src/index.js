@@ -24,11 +24,11 @@ class FlemDuino {
 	onAppStart(payload, next) {
 		this.logger.info('Starting');
 
-		this.subscriptionKey = this.flux.subscribe(this.update.bind(this), [
-			'ZonesMean', 'ScheduleTarget', 'Switcher'
-		]);
-
 		this.serialPort.open((err) => {
+			this.subscriptionKey = this.flux.subscribe(this.update.bind(this), [
+				'ZonesMean', 'ScheduleTarget', 'Switcher'
+			]);
+
 			next(err);
 		});
 	}
@@ -37,9 +37,14 @@ class FlemDuino {
 		this.logger.info('Stopping');
 
 		this.flux.unsubscribe(this.subscriptionKey);
-		this.serialPort.close((err) => {
-			next(err);
-		});
+		if (this.serialPort.isOpen) {
+			this.serialPort.close((err) => {
+				next(err);
+			});
+		}
+		else {
+			next();
+		}
 	}
 
 	update() {
@@ -63,7 +68,9 @@ class FlemDuino {
 			command = command.concat('@CTP02' + this.tempToBytes(target) + '/\n');
 		}
 
-		this.serialPort.write(command);
+		if (this.serialPort.isOpen) {
+			this.serialPort.write(command);
+		}
 	}
 
 	tempToBytes(value) {
