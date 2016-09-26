@@ -86,7 +86,7 @@ class FlemDuino {
 					break;
 				case 0x52: // Remote
 					samples = [{
-						sensorId: 'DRF5150-'payload.readUInt8(0) + '-' + payload.readUInt8(1),
+						sensorId: 'DRF5150-' + payload.readUInt8(0) + '-' + payload.readUInt8(1),
 						type: 'temp',
 						value: (payload.readUInt16LE(2) / 16),
 						meta: {
