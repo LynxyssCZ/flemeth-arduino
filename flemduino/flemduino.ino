@@ -128,7 +128,7 @@ void sendRemote(char command, byte payload[], int size) {
 
 	Serial.print(size, HEX);
 	Serial.write(payload, size);
-	Serial.println("/");
+	Serial.print("/\n");
 }
 
 void processRemote() {
