@@ -178,15 +178,15 @@ void processRemote() {
 				break;
 			case 'T':
 				// Set target
-				remoteTarget = (remotePayload[0] << 4 | remotePayload[1]) / 16.0;
+				remoteTarget = (remotePayload[1] << 8 | remotePayload[0]) / 16.0;
 				break;
 			case 'C':
 				// Set current
-				remoteCurrent = (remotePayload[0] << 4 | remotePayload[1]) / 16.0;
+				remoteCurrent = (remotePayload[1] << 8 | remotePayload[0]) / 16.0;
 				break;
 			case 'H':
 				// Set current
-				remoteHyst = (remotePayload[0] << 4 | remotePayload[1]) / 16.0;
+				remoteHyst = (remotePayload[1] << 8 | remotePayload[0]) / 16.0;
 				break;
 		}
 

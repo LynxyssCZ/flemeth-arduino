@@ -75,8 +75,8 @@ class FlemDuino {
 
 	tempToBytes(value) {
 		let buffer = Buffer.allocUnsafe(2);
-		buffer.writeUInt16LE(value * 16, 0);
-		return buffer.toString();
+		buffer.writeUInt16LE(Math.round(value * 16), 0);
+		return buffer.toString('binary');
 	}
 
 	onSerialRead(data) {
