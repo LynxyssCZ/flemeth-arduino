@@ -26,6 +26,7 @@
 unsigned int lcdCycle = 0;
 unsigned long pingCycle = 0;
 unsigned int dsCycle = 0;
+unsigned int remoteDelay = 0;
 bool updateLCDFlag = FALSE;
 bool readDSFlag = FALSE;
 
@@ -138,10 +139,15 @@ void processRemote() {
 	byte payloadLow;
 
 	if (Serial.peek() == '*') {
-		while (Serial.available()) {
+		while (Serial.available() && Serial.peek() != '@') {
 			Serial.read();
 		}
 		resetRemoteState();
+		return;
+	}
+
+	if (!remoteReceiving && Serial.available() && Serial.peek() != '@') {
+		Serial.read();
 		return;
 	}
 
@@ -161,6 +167,7 @@ void processRemote() {
 		payloadLow = Serial.read();
 		payloadSize = hex2int(payloadHi) << 4 | hex2int(payloadLow);
 		remoteReceiving = TRUE;
+		remoteDelay = 0;
 	}
 	else if (remoteReceiving && Serial.available() >= (payloadSize + 2)) {
 		// If we already started receiving, wait for specified size
@@ -272,6 +279,14 @@ ISR(TIMER0_COMPA_vect) {
 	}
 	else if (remotePresent) {
 		pingCycle++;
+	}
+
+	if (remoteReceiving) {
+		remoteDelay++;
+
+		if (remoteDelay > 800) {
+			resetRemoteState();
+		}
 	}
 
 	lcdCycle++;
