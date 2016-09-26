@@ -4,8 +4,9 @@ const SerialPort = require('serialport');
 class FlemDuino {
 	constructor(app, options) {
 		this.app = app;
-		this.flux = app.flux;
 		this.logger = app.logger.child({component: 'FlemDuino'});
+		this.flux = app.methods.flux;
+
 		this.serialPath = options.path;
 
 		this.app.addHook('lifecycle.start', this.onAppStart.bind(this));
