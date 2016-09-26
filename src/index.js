@@ -4,6 +4,7 @@ const SerialPort = require('serialport');
 class FlemDuino {
 	constructor(app, options) {
 		this.app = app;
+		this.flux = app.flux;
 		this.logger = app.logger.child({component: 'FlemDuino'});
 		this.serialPath = options.path;
 
@@ -12,7 +13,7 @@ class FlemDuino {
 
 		this.serialPort = new SerialPort(options.path, {
 			baudrate: 115200,
-			parser: serialport.parsers.raw,
+			parser: SerialPort.parsers.raw,
 			autoOpen: false
 		});
 		this.serialPort.on('data', this.onSerialRead.bind(this));
@@ -105,9 +106,8 @@ class FlemDuino {
 				});
 			}
 
-			serialPort.write([0x2a, 0x0a]);
+			this.serialPort.write([0x2a, 0x0a]);
 		}
 	}
-
-};
+}
 module.exports = FlemDuino;
