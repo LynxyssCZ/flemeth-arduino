@@ -33,7 +33,7 @@ bool readDSFlag = FALSE;
 // Remote magic
 bool remoteReceiving = FALSE;
 char remoteCommand;
-int payloadSize;
+unsigned int payloadSize;
 float remoteTarget;
 float remoteCurrent;
 float remoteHyst;
@@ -165,11 +165,12 @@ void processRemote() {
 		Serial.read(); // Payload
 		payloadHi = Serial.read();
 		payloadLow = Serial.read();
-		payloadSize = hex2int(payloadHi) << 4 | hex2int(payloadLow);
+		payloadSize = hex2int(payloadHi) << 8 | hex2int(payloadLow);
 		remoteReceiving = TRUE;
 		remoteDelay = 0;
 	}
-	else if (remoteReceiving && Serial.available() >= payloadSize)) {
+
+	if (remoteReceiving && Serial.available() >= payloadSize) {
 		// If we already started receiving, wait for specified size
 		Serial.readBytes(remotePayload, payloadSize);
 		Serial.read();
@@ -204,7 +205,7 @@ float readRemoteTemp(byte payload[], int offset) {
 	return raw / 16.0;
 }
 
-int hex2int(char hex) {
+unsigned int hex2int(char hex) {
 	if (isAlphaNumeric(hex)) {
 		if (hex < 58) {
 			return hex - 48;
