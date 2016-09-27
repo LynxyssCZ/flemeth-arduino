@@ -169,7 +169,7 @@ void processRemote() {
 		remoteReceiving = TRUE;
 		remoteDelay = 0;
 	}
-	else if (remoteReceiving && Serial.available() >= (payloadSize + 3)) { // /\r\n
+	else if (remoteReceiving && Serial.available() >= payloadSize)) {
 		// If we already started receiving, wait for specified size
 		Serial.readBytes(remotePayload, payloadSize);
 		Serial.read();
