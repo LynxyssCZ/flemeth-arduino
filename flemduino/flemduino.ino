@@ -129,7 +129,7 @@ void sendRemote(char command, byte payload[], int size) {
 
 	Serial.print(size, HEX);
 	Serial.write(payload, size);
-	Serial.print("/\n");
+	Serial.print("/\r\n");
 }
 
 void processRemote() {
@@ -169,7 +169,7 @@ void processRemote() {
 		remoteReceiving = TRUE;
 		remoteDelay = 0;
 	}
-	else if (remoteReceiving && Serial.available() >= (payloadSize + 2)) {
+	else if (remoteReceiving && Serial.available() >= (payloadSize + 3)) { // /\r\n
 		// If we already started receiving, wait for specified size
 		Serial.readBytes(remotePayload, payloadSize);
 		Serial.read();

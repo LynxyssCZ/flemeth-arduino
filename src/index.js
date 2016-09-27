@@ -27,9 +27,15 @@ class FlemDuino {
 		this.serialPort.open((err) => {
 			this.subKey = this.flux.subscribe([
 				{handler: this.updateMean.bind(this), slices: ['ZonesMean']},
-				{handler: this.updateTarget.bind(this), slices: ['ScheduleTarget']},
+				{handler: this.updateTarget.bind(this), slices: ['scheduleTarget']},
 				{handler: this.updateSwitcher.bind(this), slices: ['Switcher']}
 			]);
+
+			global.setTimeout(() => {
+				this.updateMean();
+				this.updateTarget();
+				this.updateSwitcher();
+			}, 400);
 
 			next(err);
 		});
@@ -53,7 +59,7 @@ class FlemDuino {
 		const current = this.flux.getSlice('ZonesMean').get('temperature');
 
 		if (this.serialPort.isOpen && current) {
-			const buffer = Buffer.from('@CCP02LH/\n');
+			const buffer = Buffer.from('@CCP02LH/\r\n');
 			buffer.writeUInt16LE(current * 16, 6);
 
 			this.serialPort.write(buffer);
@@ -66,7 +72,7 @@ class FlemDuino {
 		const hyst = target.get('hysteresis');
 
 		if (this.serialPort.isOpen && temp) {
-			const buffer = Buffer.from('@CTP04LHLH/\n');
+			const buffer = Buffer.from('@CTP04LHLH/\r\n');
 			buffer.writeUInt16LE(temp * 16, 6);
 			buffer.writeUInt16LE((hyst * 16) || 0, 8);
 
@@ -78,7 +84,7 @@ class FlemDuino {
 		const switcher = this.flux.getSlice('Switcher').get('realValue');
 
 		if (this.serialPort.isOpen) {
-			this.serialPort.write(Buffer.from(switcher ? '@CSP01I/\n' : '@CSP01O/\n'));
+			this.serialPort.write(Buffer.from(switcher ? '@CSP01I/\r\n' : '@CSP01O/\r\n'));
 		}
 	}
 
