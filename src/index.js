@@ -25,8 +25,10 @@ class FlemDuino {
 		this.logger.info('Starting');
 
 		this.serialPort.open((err) => {
-			this.subscriptionKey = this.flux.subscribe(this.update.bind(this), [
-				'ZonesMean', 'ScheduleTarget', 'Switcher'
+			this.subKey = this.flux.subscribe([
+				{handler: this.updateMean.bind(this), slices: ['ZonesMean']},
+				{handler: this.updateTarget.bind(this), slices: ['ScheduleTarget']},
+				{handler: this.updateSwitcher.bind(this), slices: ['Switcher']}
 			]);
 
 			next(err);
@@ -36,7 +38,7 @@ class FlemDuino {
 	onAppStop(payload, next) {
 		this.logger.info('Stopping');
 
-		this.flux.unsubscribe(this.subscriptionKey);
+		this.flux.unsubscribe(this.subKey);
 		if (this.serialPort.isOpen) {
 			this.serialPort.close((err) => {
 				next(err);
@@ -47,36 +49,37 @@ class FlemDuino {
 		}
 	}
 
-	update() {
-		const switcher = this.flux.getSlice('Switcher').get('realValue');
+	updateMean() {
 		const current = this.flux.getSlice('ZonesMean').get('temperature');
-		const target = this.flux.getSlice('ScheduleTarget').get('temperature');
-		let command = '';
 
-		if (switcher) {
-			command = command.concat('@CSP01I/\n');
-		}
-		else {
-			command = command.concat('@CSP01O/\n');
-		}
+		if (this.serialPort.isOpen && current) {
+			const buffer = Buffer.from('@CCP02LH/\n');
+			buffer.writeUInt16LE(current * 16, 6);
 
-		if (current) {
-			command = command.concat('@CCP02' + this.tempToBytes(current) + '/\n');
-		}
-
-		if (target) {
-			command = command.concat('@CTP02' + this.tempToBytes(target) + '/\n');
-		}
-
-		if (this.serialPort.isOpen) {
-			this.serialPort.write(command);
+			this.serialPort.write(buffer);
 		}
 	}
 
-	tempToBytes(value) {
-		let buffer = Buffer.allocUnsafe(2);
-		buffer.writeUInt16LE(Math.round(value * 16), 0);
-		return buffer.toString('binary');
+	updateTarget() {
+		const target = this.flux.getSlice('ScheduleTarget');
+		const temp = target.get('temperature');
+		const hyst = target.get('hysteresis');
+
+		if (this.serialPort.isOpen && temp) {
+			const buffer = Buffer.from('@CTP04LHLH/\n');
+			buffer.writeUInt16LE(temp * 16, 6);
+			buffer.writeUInt16LE((hyst * 16) || 0, 8);
+
+			this.serialPort.write(buffer);
+		}
+	}
+
+	updateSwitcher() {
+		const switcher = this.flux.getSlice('Switcher').get('realValue');
+
+		if (this.serialPort.isOpen) {
+			this.serialPort.write(Buffer.from(switcher ? '@CSP01I/\n' : '@CSP01O/\n'));
+		}
 	}
 
 	onSerialRead(data) {

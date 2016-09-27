@@ -185,21 +185,23 @@ void processRemote() {
 				break;
 			case 'T':
 				// Set target
-				remoteTarget = (remotePayload[1] << 8 | remotePayload[0]) / 16.0;
+				remoteTarget = readRemoteTemp(remotePayload, 0);
+				remoteHyst = readRemoteTemp(remotePayload, 2);
 				break;
 			case 'C':
 				// Set current
-				remoteCurrent = (remotePayload[1] << 8 | remotePayload[0]) / 16.0;
-				break;
-			case 'H':
-				// Set current
-				remoteHyst = (remotePayload[1] << 8 | remotePayload[0]) / 16.0;
+				remoteCurrent = readRemoteTemp(remotePayload, 0);
 				break;
 		}
 
 		resetRemoteState();
 		sendRemote();
 	}
+}
+
+float readRemoteTemp(byte payload[], int offset) {
+	unsigned int raw = (payload[offset + 1] << 8 | payload[offset]);
+	return raw / 16.0;
 }
 
 int hex2int(char hex) {
