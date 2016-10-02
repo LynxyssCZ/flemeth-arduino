@@ -1,6 +1,6 @@
 {
   "name": "flemeth-arduino",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Flemeth arduino companion",
   "main": "src/index.js",
   "scripts": {

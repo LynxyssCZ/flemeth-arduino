@@ -88,7 +88,9 @@ class FlemDuino {
 		}
 	}
 
-	onSerialRead(data) {
+	onSerialRead(dataArray) {
+		const data = Buffer.from(dataArray);
+
 		if (data[0] === 0x40 && data[1] === 0x43) { // Command
 			let payload = data.slice(6, data.length - 2);
 			let samples = [];
