@@ -11,20 +11,13 @@ class FlemDuino {
 
 		this.app.addHook('lifecycle.start', this.onAppStart.bind(this));
 		this.app.addHook('lifecycle.stop', this.onAppStop.bind(this));
-
-		this.serialPort = new SerialPort(options.path, {
-			baudrate: 115200,
-			parser: SerialPort.parsers.byteDelimiter([0x0d, 0x0a]),
-			autoOpen: false
-		});
-		this.serialPort.on('data', this.onSerialRead.bind(this));
 	}
 
 	// Hooks
 	onAppStart(payload, next) {
 		this.logger.info('Starting');
 
-		this.serialPort.open((err) => {
+		this._connectSerial((err) => {
 			this.subKey = this.flux.subscribe([
 				{handler: this.updateMean.bind(this), slices: ['ZonesMean']},
 				{handler: this.updateTarget.bind(this), slices: ['scheduleTarget']},
@@ -45,7 +38,7 @@ class FlemDuino {
 		this.logger.info('Stopping');
 
 		this.flux.unsubscribe(this.subKey);
-		if (this.serialPort.isOpen) {
+		if (this.serialPort && this.serialPort.isOpen) {
 			this.serialPort.close((err) => {
 				next(err);
 			});
@@ -58,7 +51,7 @@ class FlemDuino {
 	updateMean() {
 		const current = this.flux.getSlice('ZonesMean').get('temperature');
 
-		if (this.serialPort.isOpen && current) {
+		if (current) {
 			const buffer = Buffer.from('@CCP02LH/\r\n');
 			buffer.writeUInt16LE(current * 16, 6);
 
@@ -71,7 +64,7 @@ class FlemDuino {
 		const temp = target.get('temperature');
 		const hyst = target.get('hysteresis');
 
-		if (this.serialPort.isOpen && temp) {
+		if (temp) {
 			const buffer = Buffer.from('@CTP04LHLH/\r\n');
 			buffer.writeUInt16LE(temp * 16, 6);
 			buffer.writeUInt16LE((hyst * 16) || 0, 8);
@@ -83,9 +76,7 @@ class FlemDuino {
 	updateSwitcher() {
 		const switcher = this.flux.getSlice('Switcher').get('realValue');
 
-		if (this.serialPort.isOpen) {
-			this.serialPort.write(Buffer.from(switcher ? '@CSP01I/\r\n' : '@CSP01O/\r\n'));
-		}
+		this._sendToArduino(Buffer.from(switcher ? '@CSP01I/\r\n' : '@CSP01O/\r\n'));
 	}
 
 	onSerialRead(dataArray) {
@@ -125,8 +116,26 @@ class FlemDuino {
 				});
 			}
 
-			this.serialPort.write([0x2a, 0x0a]);
+			this._sendToArduino([0x2a, 0x0d, 0x0a]);
 		}
 	}
+
+	_sendToArduino(data) {
+		if (this.serialPort && this.serialPort.isOpen) {
+			this.serialPort.write(data);
+		}
+	}
+
+	_connectSerial(next) {
+		this.serialPort = new SerialPort(this.serialPath, {
+			baudrate: 115200,
+			SerialPort.parsers.byteDelimiter([0x0d, 0x0a])
+			autoOpen: false
+		});
+		this.serialPort.on('data', this.onSerialRead.bind(this));
+
+		this.serialPort.open(next);
+	}
+
 }
 module.exports = FlemDuino;
