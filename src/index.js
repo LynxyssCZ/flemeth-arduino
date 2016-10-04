@@ -129,7 +129,7 @@ class FlemDuino {
 	_connectSerial(next) {
 		this.serialPort = new SerialPort(this.serialPath, {
 			baudrate: 115200,
-			SerialPort.parsers.byteDelimiter([0x0d, 0x0a])
+			parser: SerialPort.parsers.byteDelimiter([0x0d, 0x0a]),
 			autoOpen: false
 		});
 		this.serialPort.on('data', this.onSerialRead.bind(this));
